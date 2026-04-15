@@ -1,19 +1,19 @@
 generator client {
-  provider   = "prisma-client-js"
-  engineType = "binary"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+  url      = "file:./dev.db"
 }
 
 model Meeting {
-  id            String   @id @default(uuid())
-  meetUrl       String
-  status        String   @default("JOINING") 
-  audioUrl      String?  
-  transcriptUrl String?  
-  summary       String?  
-  createdAt     DateTime @default(now())
+  id          String   @id @default(uuid())
+  meetUrl     String
+  status      String   @default("JOINING") // JOINING, RECORDING, SUMMARIZING, COMPLETED, FAILED
+  audioPath   String?
+  summaryPath String?
+  summaryData String?  // Storing the JSON payload directly in the DB
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

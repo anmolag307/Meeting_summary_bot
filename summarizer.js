@@ -44,7 +44,7 @@ async function runGroqSummarizer(audioFilePath) {
     
     if (!fs.existsSync(audioFilePath)) {
         console.error("❌ Audio file not found. Make sure the bot saved it!");
-        return;
+        throw new Error("Audio file not found");
     }
 
     // ==========================================
@@ -59,8 +59,6 @@ async function runGroqSummarizer(audioFilePath) {
         const transcription = await groq.audio.transcriptions.create({
             file: fs.createReadStream(audioFilePath),
             model: "whisper-large-v3",
-            // 🔴 FIX: Removed the prompt entirely. Whisper will now only 
-            // write down exactly what it hears in the audio file, zero hallucinations.
             response_format: "verbose_json",
             temperature: 0,
         });
@@ -71,7 +69,7 @@ async function runGroqSummarizer(audioFilePath) {
         transcriptSegments = parsedTranscription.segments;
     } catch (err) {
         console.error("❌ Groq Whisper Error:", err.message);
-        return;
+        throw err; // INTEGRATION CHANGE: Throw error to server.js
     }
 
     // Basic cleanup just in case Whisper adds weird whitespace
@@ -79,7 +77,7 @@ async function runGroqSummarizer(audioFilePath) {
 
     if (!transcriptText || transcriptText === "") {
         console.log("⚠️ No speech detected in the audio file.");
-        return;
+        throw new Error("No speech detected");
     }
 
     console.log("\n--- RAW TRANSCRIPT PREVIEW ---");
@@ -139,28 +137,30 @@ Return a JSON object with this EXACT structure:
 
         if (!parsedSummary) {
             console.error("❌ Could not parse model output as JSON.");
-            return;
+            throw new Error("Failed to parse JSON summary");
         }
 
         parsedSummary.primary_language = detectedPrimaryLanguage || 'unknown';
         
-        // Save the final intelligence file
+        // Save the final intelligence file locally as backup
         const summaryPath = audioFilePath.replace('.webm', '_summary.json');
         fs.writeFileSync(summaryPath, JSON.stringify(parsedSummary, null, 2), 'utf8');
 
         console.log(`\n✅ SUCCESS! Summary saved to: ${summaryPath}`);
-        console.log(parsedSummary);
+        
+        // INTEGRATION CHANGE: Return the parsed summary to server.js
+        return parsedSummary;
 
     } catch (err) {
         console.error("❌ Groq Llama Error:", err.message);
+        throw err; // INTEGRATION CHANGE: Throw error to server.js
     }
 }
 
-// Export the function so bot.js can trigger it automatically
 module.exports = { runGroqSummarizer };
 
 // UNCOMMENT THE LINES BELOW TO TEST THIS FILE MANUALLY
 if (require.main === module) {
     const testAudio = './recording_1776193246875.webm';
-    runGroqSummarizer(testAudio);
+    runGroqSummarizer(testAudio).catch(console.error);
 }

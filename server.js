@@ -1,68 +1,95 @@
+// server.js
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
-const { fork } = require('child_process');
+const cors = require('cors');
 const path = require('path');
+const { fork } = require('child_process');
+const { PrismaClient } = require('@prisma/client');
+const { runGroqSummarizer } = require('./summarizer'); // Import your summarizer
 
 const app = express();
 const prisma = new PrismaClient();
+const PORT = 3000;
+
+app.use(cors());
 app.use(express.json());
 
-// 🔴 NEW: This makes the "files" folder accessible via web links!
-app.use('/files', express.static(path.join(__dirname, 'files')));
+// 1. STATIC SERVER: Expose the 'recordings' directory
+app.use('/files', express.static(path.join(__dirname, 'recordings')));
 
-// ENDPOINT 1: Start the Bot
+// 2. THE CONTROLLER: Start the meeting
 app.post('/meetings/start', async (req, res) => {
     const { meetUrl } = req.body;
 
-    if (!meetUrl || !meetUrl.includes('meet.google.com')) {
-        return res.status(400).json({ error: "Invalid Google Meet URL" });
+    if (!meetUrl) {
+        return res.status(400).json({ error: "meetUrl is required" });
     }
 
     try {
+        // Create the DB record tracking the state
         const meeting = await prisma.meeting.create({
-            data: { meetUrl: meetUrl, status: "JOINING" }
+            data: {
+                meetUrl: meetUrl,
+                status: "JOINING"
+            }
         });
 
-        const botPath = path.join(__dirname, 'bot.js');
-        const botProcess = fork(botPath, [meetUrl, meeting.id]);
+        // Spawn the bot in the background so we don't block the Express event loop
+        const botProcess = fork(path.join(__dirname, 'bot.js'), [meetUrl, meeting.id]);
 
-        botProcess.on('error', (err) => {
-            console.error(`Failed to start bot for ${meeting.id}:`, err);
+        // Listen for messages from the bot process
+        botProcess.on('message', async (message) => {
+            if (message.status === 'RECORDING') {
+                await prisma.meeting.update({
+                    where: { id: meeting.id },
+                    data: { status: 'RECORDING' }
+                });
+            } else if (message.status === 'FINISHED_AUDIO') {
+                await prisma.meeting.update({
+                    where: { id: meeting.id },
+                    data: { status: 'SUMMARIZING', audioPath: message.audioPath }
+                });
+
+                // Trigger the summarizer now that audio is done
+                try {
+                    const summaryData = await runGroqSummarizer(message.audioPath);
+                    
+                    await prisma.meeting.update({
+                        where: { id: meeting.id },
+                        data: { 
+                            status: 'COMPLETED',
+                            summaryPath: message.audioPath.replace('.webm', '_summary.json'),
+                            summaryData: JSON.stringify(summaryData)
+                        }
+                    });
+                } catch (error) {
+                    await prisma.meeting.update({
+                        where: { id: meeting.id },
+                        data: { status: 'FAILED' }
+                    });
+                }
+            }
         });
 
-        return res.status(202).json({
-            message: "Bot is joining the meeting...",
-            meetingId: meeting.id,
-            statusUrl: `${process.env.BASE_URL}/meetings/${meeting.id}/status`
+        // Return an immediate response to the client
+        res.status(202).json({ 
+            message: "Bot is launching in the background.", 
+            meetingId: meeting.id 
         });
 
     } catch (error) {
-        res.status(500).json({ error: "Database error" });
+        res.status(500).json({ error: "Failed to start meeting process." });
     }
 });
 
-// ENDPOINT 2: Check Status
-app.get('/meetings/:id/status', async (req, res) => {
-    try {
-        const meeting = await prisma.meeting.findUnique({
-            where: { id: req.params.id }
-        });
-
-        if (!meeting) return res.status(404).json({ error: "Meeting not found" });
-
-        res.json({
-            id: meeting.id,
-            status: meeting.status,
-            audioUrl: meeting.audioUrl,
-            transcriptUrl: meeting.transcriptUrl,
-            summary: meeting.summary ? JSON.parse(meeting.summary) : null
-        });
-    } catch (error) {
-        res.status(500).json({ error: "Database error" });
-    }
+// Helper endpoint to check status
+app.get('/meetings/:id', async (req, res) => {
+    const meeting = await prisma.meeting.findUnique({
+        where: { id: req.params.id }
+    });
+    if (!meeting) return res.status(404).json({ error: "Not found" });
+    res.json(meeting);
 });
 
-const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`🚀 API Server running on ${process.env.BASE_URL}`);
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
 });

@@ -6,15 +6,24 @@ const puppeteer = require("puppeteer");
 // has time to run before the process exits
 process.stdin.resume();
 
-// ⚠️ YOUR MEET LINK
-const MEET_URL = "https://meet.google.com/hdr-nmbs-ngz";
-const BOT_NAME = "Summary Bot";
+// ==========================================
+// INTEGRATION CHANGES: Parse Arguments & Setup Folders
+// ==========================================
+const args = process.argv.slice(2);
+const MEET_URL = args[0] || "https://meet.google.com/hdr-nmbs-ngz";
+const MEETING_ID = args[1] || "manual-run";
 
+const recordingsDir = path.join(__dirname, 'recordings');
+if (!fs.existsSync(recordingsDir)) {
+    fs.mkdirSync(recordingsDir);
+}
+
+const BOT_NAME = "Summary Bot";
 const ALONE_THRESHOLD_SECONDS = 10;
 const CHECK_INTERVAL_MS = 5000; 
 
 async function startAudioBot(meetUrl) {
-  console.log("🚀 Launching browser...");
+  console.log(`🚀 Launching browser for meeting: ${MEETING_ID}...`);
 
   const browser = await puppeteer.launch({
     headless: false,
@@ -219,7 +228,8 @@ async function startAudioBot(meetUrl) {
   } catch (e) {} 
   await delay(1000);
 
-  const filePath = path.join(__dirname, `recording_${Date.now()}.webm`);
+  // INTEGRATION CHANGE: Save to recordings directory
+  const filePath = path.join(recordingsDir, `recording_${Date.now()}.webm`);
   const fileStream = fs.createWriteStream(filePath);
   let bytesWritten = 0;
   let hasData = false;
@@ -270,6 +280,11 @@ async function startAudioBot(meetUrl) {
 
   console.log(`🔴 RECORDING → ${filePath}`);
   console.log("Press [Ctrl+C] to stop manually.\n");
+
+  // INTEGRATION CHANGE: Notify Express that we are officially recording
+  if (process.send) {
+      process.send({ status: 'RECORDING' });
+  }
 
   setTimeout(() => {
     if (!hasData) console.warn("⚠️  No audio after 20s. Is anyone else in the call?");
@@ -324,6 +339,15 @@ async function startAudioBot(meetUrl) {
       }
       
       process.stdin.pause(); 
+
+      // INTEGRATION CHANGE: Notify Express that audio is finished and ready for summary
+      if (process.send) {
+          process.send({ 
+              status: 'FINISHED_AUDIO', 
+              audioPath: filePath 
+          });
+      }
+
       process.exit(0);
     } catch (err) {
       console.error("Shutdown error:", err.message);
@@ -340,7 +364,6 @@ async function startAudioBot(meetUrl) {
     await shutdown("Ctrl+C");
   });
 
-  // NEW: Instantly trigger shutdown if the user clicks the OS 'X' button
   browser.on('disconnected', () => {
       shutdown("Browser window was closed manually via 'X' button.");
   });

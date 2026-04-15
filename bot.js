@@ -90,7 +90,7 @@ async function startAudioBot(meetUrl) {
     try {
       const nameInput = await page.waitForSelector(
         'input[placeholder*="name" i], input[aria-label*="name" i], input[type="text"]',
-        { timeout: 6000 }
+        { timeout: 4000 }
       );
       await nameInput.click({ clickCount: 3 });
       await nameInput.type(BOT_NAME, { delay: 80 });
@@ -107,16 +107,30 @@ async function startAudioBot(meetUrl) {
     console.log("🔐 LOGIN REQUIRED — Log in within 90 seconds.");
     console.log("=============================================\n");
 
-    for (let remaining = 90; remaining > 0; remaining -= 15) {
-      await delay(15000);
-      if (remaining - 15 > 0) console.log(`⏳ ${remaining - 15}s remaining...`);
+    let loginSuccessful = false;
+    for (let remaining = 90; remaining > 0; remaining -= 2) {
+      await delay(2000); // Check every 2 seconds
+      
+      const currentUrl = page.url();
+      // If we are back on the meet page and not on the Google Accounts sign-in page
+      if (currentUrl.includes("meet.google.com") && !currentUrl.includes("accounts.google.com")) {
+          console.log("✅ Login successful! Skipping wait time...");
+          loginSuccessful = true;
+          break;
+      }
+      
+      if (remaining % 10 === 0) { // Just to keep the terminal updated without spamming
+          console.log(`⏳ ~${remaining}s remaining...`);
+      }
     }
 
-    console.log("⌛ Time's up — continuing...");
-    if (!page.url().includes("meet.google.com")) {
-      console.log("🔄 Navigating back to the meeting...");
-      await page.goto(meetUrl, { waitUntil: "networkidle2" });
-      await delay(2000);
+    if (!loginSuccessful) {
+        console.log("⌛ Time's up — continuing...");
+        if (!page.url().includes("meet.google.com")) {
+          console.log("🔄 Navigating back to the meeting...");
+          await page.goto(meetUrl, { waitUntil: "networkidle2" });
+          await delay(2000);
+        }
     }
   }
 
@@ -149,7 +163,7 @@ async function startAudioBot(meetUrl) {
   for (const sel of joinXPaths) {
     try {
       console.log(`  Trying: ${sel}`);
-      const btn = await page.waitForSelector(sel, { timeout: 6000 });
+      const btn = await page.waitForSelector(sel, { timeout: 3000 });
       await delay(500);
 
       const box = await btn.boundingBox();
@@ -193,18 +207,17 @@ async function startAudioBot(meetUrl) {
   // ENFORCE MUTE POST-JOIN
   // ==========================================
   console.log("🛡️ Enforcing mute state inside the meeting...");
-  await delay(2000); 
+  await delay(1500); 
   await muteControls(page);
 
   // ==========================================
   // START RECORDING
   // ==========================================
-  await delay(1000);
   try {
     await page.bringToFront();
     await page.mouse.click(10, 10); 
   } catch (e) {} 
-  await delay(1500);
+  await delay(1000);
 
   const filePath = path.join(__dirname, `recording_${Date.now()}.webm`);
   const fileStream = fs.createWriteStream(filePath);

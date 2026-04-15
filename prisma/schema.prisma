@@ -1,0 +1,19 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Meeting {
+  id            String   @id @default(uuid())
+  meetUrl       String
+  status        String   @default("JOINING") 
+  audioUrl      String?  
+  transcriptUrl String?  
+  summary       String?  
+  createdAt     DateTime @default(now())
+}

@@ -3,3 +3,8 @@ bot-chrome-profile/
 .env
 tempCodeRunnerFile.js
 
+
+/generated/prisma
+recording_*.webm
+recording_*_summary.json
+/prisma/dev.db

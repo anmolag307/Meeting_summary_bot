@@ -2,7 +2,7 @@ services:
   - type: web
     name: meet-bot-backend
     env: docker
-    plan: starter
+    plan: free
     dockerfilePath: ./Dockerfile
     autoDeploy: true
     envVars:

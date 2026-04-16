@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: meet-bot-backend
+    env: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SUMMARY_LANGUAGE
+        value: English
+    disks:
+      - name: meet-bot-storage
+        mountPath: /opt/render/project/.render-data
+        sizeGB: 10

@@ -54,6 +54,7 @@ async function runGroqSummarizer(audioFilePath) {
     let transcriptText = "";
     let detectedPrimaryLanguage = 'unknown';
     let transcriptSegments = [];
+    let transcriptPath = '';
     
     try {
         const transcription = await groq.audio.transcriptions.create({
@@ -80,6 +81,10 @@ async function runGroqSummarizer(audioFilePath) {
         throw new Error("No speech detected");
     }
 
+    transcriptPath = audioFilePath.replace('.webm', '_transcript.txt');
+    fs.writeFileSync(transcriptPath, transcriptText + '\n', 'utf8');
+
+    console.log(`📝 Transcript saved to: ${transcriptPath}`);
     console.log("\n--- RAW TRANSCRIPT PREVIEW ---");
     console.log(transcriptText.substring(0, 500) + "...\n------------------------------\n");
     console.log(`🌐 Whisper detected primary language: ${detectedPrimaryLanguage}`);
@@ -148,8 +153,15 @@ Return a JSON object with this EXACT structure:
 
         console.log(`\n✅ SUCCESS! Summary saved to: ${summaryPath}`);
         
-        // INTEGRATION CHANGE: Return the parsed summary to server.js
-        return parsedSummary;
+        // INTEGRATION CHANGE: Return summary and transcript metadata to server.js
+        return {
+            summary: parsedSummary,
+            summaryPath,
+            transcriptPath,
+            transcriptText,
+            detectedPrimaryLanguage,
+            segmentCount: transcriptSegments.length,
+        };
 
     } catch (err) {
         console.error("❌ Groq Llama Error:", err.message);

@@ -10,8 +10,10 @@ datasource db {
 model Meeting {
   id          String   @id @default(uuid())
   meetUrl     String
+  clientToken String   @default("")
   status      String   @default("JOINING") // JOINING, RECORDING, SUMMARIZING, COMPLETED, FAILED
   audioPath   String?
+  transcriptPath String?
   summaryPath String?
   summaryData String?  // Storing the JSON payload directly in the DB
   createdAt   DateTime @default(now())

@@ -13,10 +13,19 @@ const args = process.argv.slice(2);
 const MEET_URL = args[0] || "https://meet.google.com/hdr-nmbs-ngz";
 const MEETING_ID = args[1] || "manual-run";
 
-const recordingsDir = path.join(__dirname, 'recordings');
+const recordingsDir = process.env.RECORDINGS_DIR || path.join(__dirname, 'recordings');
+const profilesRootDir = process.env.BOT_PROFILES_DIR || path.join(__dirname, 'bot-chrome-profile');
+const profileDir = path.join(profilesRootDir, MEETING_ID);
+
 if (!fs.existsSync(recordingsDir)) {
-    fs.mkdirSync(recordingsDir);
+  fs.mkdirSync(recordingsDir, { recursive: true });
 }
+if (!fs.existsSync(profilesRootDir)) {
+  fs.mkdirSync(profilesRootDir, { recursive: true });
+}
+
+const HEADLESS_MODE = String(process.env.PUPPETEER_HEADLESS || 'true').toLowerCase() !== 'false';
+const CHROME_EXECUTABLE_PATH = process.env.CHROME_EXECUTABLE_PATH || undefined;
 
 const BOT_NAME = "Summary Bot";
 const ALONE_THRESHOLD_SECONDS = 10;
@@ -26,9 +35,9 @@ async function startAudioBot(meetUrl) {
   console.log(`🚀 Launching browser for meeting: ${MEETING_ID}...`);
 
   const browser = await puppeteer.launch({
-    headless: false,
-    executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-    userDataDir: "./bot-chrome-profile",
+    headless: HEADLESS_MODE,
+    executablePath: CHROME_EXECUTABLE_PATH,
+    userDataDir: profileDir,
     defaultViewport: null,          
     args: [
       "--start-maximized",          
@@ -229,7 +238,7 @@ async function startAudioBot(meetUrl) {
   await delay(1000);
 
   // INTEGRATION CHANGE: Save to recordings directory
-  const filePath = path.join(recordingsDir, `recording_${Date.now()}.webm`);
+  const filePath = path.join(recordingsDir, `recording_${MEETING_ID}_${Date.now()}.webm`);
   const fileStream = fs.createWriteStream(filePath);
   let bytesWritten = 0;
   let hasData = false;
@@ -337,6 +346,10 @@ async function startAudioBot(meetUrl) {
       if (browser.isConnected()) {
           await browser.close().catch(() => {});
       }
+
+      try {
+        fs.rmSync(profileDir, { recursive: true, force: true });
+      } catch { }
       
       process.stdin.pause(); 
 
@@ -362,6 +375,10 @@ async function startAudioBot(meetUrl) {
       process.exit(1);
     });
     await shutdown("Ctrl+C");
+  });
+
+  process.on("SIGTERM", async () => {
+    await shutdown("SIGTERM");
   });
 
   browser.on('disconnected', () => {
@@ -543,4 +560,10 @@ async function dismissGotItPopup(page) {
 
 function delay(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
-startAudioBot(MEET_URL);
+startAudioBot(MEET_URL).catch((error) => {
+  console.error("❌ Bot fatal error:", error.message);
+  if (process.send) {
+    process.send({ status: 'ERROR', error: error.message });
+  }
+  process.exit(1);
+});

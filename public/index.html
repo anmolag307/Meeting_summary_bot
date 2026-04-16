@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meet Bot | Auto Summary</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="ambient-shape shape-a" aria-hidden="true"></div>
+  <div class="ambient-shape shape-b" aria-hidden="true"></div>
+
+  <main class="app-shell">
+    <header class="hero">
+      <p class="eyebrow">Deployable Meeting Assistant</p>
+      <h1>Turn a Google Meet link into a transcript and summary</h1>
+      <p class="hero-copy">Paste your meeting URL, launch the bot, and get downloadable files as soon as the meeting is done.</p>
+    </header>
+
+    <section class="panel" aria-live="polite">
+      <form id="meetingForm" class="meeting-form">
+        <label for="meetUrl">Google Meet Link</label>
+        <div class="input-row">
+          <input
+            id="meetUrl"
+            name="meetUrl"
+            type="url"
+            placeholder="https://meet.google.com/abc-defg-hij"
+            required
+          />
+          <button id="startBtn" type="submit">Generate Summary</button>
+        </div>
+      </form>
+
+      <div id="statusCard" class="status-card hidden">
+        <div class="status-top">
+          <p class="status-label">Current Status</p>
+          <p id="meetingId" class="meeting-id"></p>
+        </div>
+        <h2 id="statusText">Waiting...</h2>
+        <p id="statusHint" class="status-hint"></p>
+      </div>
+
+      <div id="downloads" class="downloads hidden">
+        <h3>Your files are ready</h3>
+        <div class="download-actions">
+          <a id="transcriptLink" class="download-btn" href="#" download>Download Transcript</a>
+          <a id="summaryLink" class="download-btn" href="#" download>Download Summary</a>
+        </div>
+      </div>
+
+      <div id="errorBox" class="error-box hidden"></div>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

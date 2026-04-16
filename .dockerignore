@@ -1,0 +1,9 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+bot-chrome-profile
+recordings
+*.webm
+*.sqlite
+*.db

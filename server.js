@@ -130,7 +130,7 @@ async function stopBotProcess(meetingId) {
     });
 }
 
-app.get('/health', (_req, res) => {
+app.head('/health', (_req, res) => {
     res.json({ ok: true });
 });
 

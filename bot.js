@@ -10,7 +10,7 @@ process.stdin.resume();
 // INTEGRATION CHANGES: Parse Arguments & Setup Folders
 // ==========================================
 const args = process.argv.slice(2);
-const MEET_URL = args[0] || "https://meet.google.com/hdr-nmbs-ngz";
+const MEET_URL = args[0] || "https://meet.google.com/your_meeting_link"; //change this
 const MEETING_ID = args[1] || "manual-run";
 
 const recordingsDir = path.join(__dirname, 'recordings');

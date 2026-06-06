@@ -40,17 +40,17 @@ function safeJsonParse(raw) {
 }
 
 async function runGroqSummarizer(audioFilePath) {
-    console.log(`\n🎧 Reading audio file: ${audioFilePath}`);
+    console.log(`\n Reading audio file: ${audioFilePath}`);
     
     if (!fs.existsSync(audioFilePath)) {
-        console.error("❌ Audio file not found. Make sure the bot saved it!");
+        console.error(" Audio file not found. Make sure the bot saved it!");
         throw new Error("Audio file not found");
     }
 
     // ==========================================
     // 1. TRANSCRIBE WITH GROQ WHISPER
     // ==========================================
-    console.log("🧠 Sending to Groq Whisper-large-v3 for transcription...");
+    console.log(" Sending to Groq Whisper-large-v3 for transcription...");
     let transcriptText = "";
     let detectedPrimaryLanguage = 'unknown';
     let transcriptSegments = [];
@@ -68,7 +68,7 @@ async function runGroqSummarizer(audioFilePath) {
         detectedPrimaryLanguage = parsedTranscription.language;
         transcriptSegments = parsedTranscription.segments;
     } catch (err) {
-        console.error("❌ Groq Whisper Error:", err.message);
+        console.error(" Groq Whisper Error:", err.message);
         throw err; // INTEGRATION CHANGE: Throw error to server.js
     }
 
@@ -76,18 +76,18 @@ async function runGroqSummarizer(audioFilePath) {
     transcriptText = transcriptText.trim();
 
     if (!transcriptText || transcriptText === "") {
-        console.log("⚠️ No speech detected in the audio file.");
+        console.log(" No speech detected in the audio file.");
         throw new Error("No speech detected");
     }
 
     console.log("\n--- RAW TRANSCRIPT PREVIEW ---");
     console.log(transcriptText.substring(0, 500) + "...\n------------------------------\n");
-    console.log(`🌐 Whisper detected primary language: ${detectedPrimaryLanguage}`);
+    console.log(` Whisper detected primary language: ${detectedPrimaryLanguage}`);
 
     // ==========================================
     // 2. SUMMARIZE WITH GROQ LLAMA-3.3-70B
     // ==========================================
-    console.log(`✨ Feeding transcript to Llama-3.3-70b for JSON summary in ${DEFAULT_SUMMARY_LANGUAGE}...`);
+    console.log(` Feeding transcript to Llama-3.3-70b for JSON summary in ${DEFAULT_SUMMARY_LANGUAGE}...`);
     try {
         const chatCompletion = await groq.chat.completions.create({
             model: "llama-3.3-70b-versatile",
@@ -136,7 +136,7 @@ Return a JSON object with this EXACT structure:
         const parsedSummary = safeJsonParse(rawSummary);
 
         if (!parsedSummary) {
-            console.error("❌ Could not parse model output as JSON.");
+            console.error("Could not parse model output as JSON.");
             throw new Error("Failed to parse JSON summary");
         }
 
@@ -146,13 +146,13 @@ Return a JSON object with this EXACT structure:
         const summaryPath = audioFilePath.replace('.webm', '_summary.json');
         fs.writeFileSync(summaryPath, JSON.stringify(parsedSummary, null, 2), 'utf8');
 
-        console.log(`\n✅ SUCCESS! Summary saved to: ${summaryPath}`);
+        console.log(`\n SUCCESS! Summary saved to: ${summaryPath}`);
         
         // INTEGRATION CHANGE: Return the parsed summary to server.js
         return parsedSummary;
 
     } catch (err) {
-        console.error("❌ Groq Llama Error:", err.message);
+        console.error(" Groq Llama Error:", err.message);
         throw err; // INTEGRATION CHANGE: Throw error to server.js
     }
 }
@@ -160,7 +160,7 @@ Return a JSON object with this EXACT structure:
 module.exports = { runGroqSummarizer };
 
 // UNCOMMENT THE LINES BELOW TO TEST THIS FILE MANUALLY
-if (require.main === module) {
-    const testAudio = './recording_1776193246875.webm';
-    runGroqSummarizer(testAudio).catch(console.error);
-}
+// if (require.main === module) {
+//     const testAudio = './recording.webm';
+//     runGroqSummarizer(testAudio).catch(console.error);
+// }

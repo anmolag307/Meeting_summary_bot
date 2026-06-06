@@ -23,7 +23,7 @@ const ALONE_THRESHOLD_SECONDS = 10;
 const CHECK_INTERVAL_MS = 5000; 
 
 async function startAudioBot(meetUrl) {
-  console.log(`🚀 Launching browser for meeting: ${MEETING_ID}...`);
+  console.log(` Launching browser for meeting: ${MEETING_ID}...`);
 
   const browser = await puppeteer.launch({
     headless: false,
@@ -82,20 +82,20 @@ async function startAudioBot(meetUrl) {
   // ==========================================
   // NAVIGATE TO MEET
   // ==========================================
-  console.log(`🔗 Going to ${meetUrl}...`);
+  console.log(`Going to ${meetUrl}...`);
   await page.goto(meetUrl, { waitUntil: "networkidle2" });
 
-  console.log("⏳ Waiting 1s for pre-join screen to load...");
+  console.log(" Waiting 1s for pre-join screen to load...");
   await delay(1000);
 
   // ==========================================
   // SMART AUTH DETECTION
   // ==========================================
   const state = await detectPageState(page);
-  console.log(`📋 Page state: ${state}`);
+  console.log(` Page state: ${state}`);
 
   if (state === "guest") {
-    console.log(`⌨️  Entering guest name: "${BOT_NAME}"...`);
+    console.log(`Entering guest name: "${BOT_NAME}"...`);
     try {
       const nameInput = await page.waitForSelector(
         'input[placeholder*="name" i], input[aria-label*="name" i], input[type="text"]',
@@ -103,17 +103,17 @@ async function startAudioBot(meetUrl) {
       );
       await nameInput.click({ clickCount: 3 });
       await nameInput.type(BOT_NAME, { delay: 80 });
-      console.log("✅ Name entered.");
+      console.log("Name entered.");
     } catch {
-      console.warn("⚠️  Could not find name input.");
+      console.warn("Could not find name input.");
     }
 
   } else if (state === "loggedin") {
-    console.log("✅ Already logged in — joining directly.");
+    console.log("Already logged in — joining directly.");
 
   } else {
     console.log("\n=============================================");
-    console.log("🔐 LOGIN REQUIRED — Log in within 90 seconds.");
+    console.log("LOGIN REQUIRED — Log in within 90 seconds.");
     console.log("=============================================\n");
 
     let loginSuccessful = false;
@@ -123,20 +123,20 @@ async function startAudioBot(meetUrl) {
       const currentUrl = page.url();
       // If we are back on the meet page and not on the Google Accounts sign-in page
       if (currentUrl.includes("meet.google.com") && !currentUrl.includes("accounts.google.com")) {
-          console.log("✅ Login successful! Skipping wait time...");
+          console.log("Login successful! Skipping wait time...");
           loginSuccessful = true;
           break;
       }
       
       if (remaining % 10 === 0) { // Just to keep the terminal updated without spamming
-          console.log(`⏳ ~${remaining}s remaining...`);
+          console.log(`~${remaining}s remaining...`);
       }
     }
 
     if (!loginSuccessful) {
-        console.log("⌛ Time's up — continuing...");
+        console.log("Time's up — continuing...");
         if (!page.url().includes("meet.google.com")) {
-          console.log("🔄 Navigating back to the meeting...");
+          console.log("Navigating back to the meeting...");
           await page.goto(meetUrl, { waitUntil: "networkidle2" });
           await delay(2000);
         }
@@ -146,7 +146,7 @@ async function startAudioBot(meetUrl) {
   // ==========================================
   // MUTE MIC & CAMERA (PRE-JOIN)
   // ==========================================
-  console.log("⏳ Waiting 1s before muting...");
+  console.log("Waiting 1s before muting...");
   await muteControls(page);
   await delay(1000);
 
@@ -155,7 +155,7 @@ async function startAudioBot(meetUrl) {
   // ==========================================
   // CLICK JOIN
   // ==========================================
-  console.log("🖱️  Clicking join button...");
+  console.log(" Clicking join button...");
 
   const joinXPaths =
     state === "guest"
@@ -198,24 +198,24 @@ async function startAudioBot(meetUrl) {
   }
 
   if (!joined) {
-    console.error("❌ Could not find join button. Keeping window open for 5 min to debug.");
+    console.error("Could not find join button. Keeping window open for 5 min to debug.");
     await delay(300000);
     process.exit(1);
   }
 
-  console.log("⏳ Waiting to be admitted (up to 2 min)...");
+  console.log("Waiting to be admitted (up to 2 min)...");
   try {
     await page.waitForSelector('[aria-label="Leave call"]', { timeout: 120000 });
   } catch {
-    console.error("❌ Not admitted. Host may need to click 'Admit'.");
+    console.error("Not admitted. Host may need to click 'Admit'.");
     process.exit(1);
   }
-  console.log("✅ In the meeting!");
+  console.log("In the meeting!");
 
   // ==========================================
   // ENFORCE MUTE POST-JOIN
   // ==========================================
-  console.log("🛡️ Enforcing mute state inside the meeting...");
+  console.log("Enforcing mute state inside the meeting...");
   await delay(1500); 
   await muteControls(page);
 
@@ -240,7 +240,7 @@ async function startAudioBot(meetUrl) {
     bytesWritten += buf.length;
     if (!hasData) {
       hasData = true;
-      console.log(`🟢 Audio flowing! First chunk: ${buf.length} bytes`);
+      console.log(`Audio flowing! First chunk: ${buf.length} bytes`);
     }
   });
 
@@ -272,13 +272,13 @@ async function startAudioBot(meetUrl) {
 
   let recorderStarted = await startRecorder();
   if (!recorderStarted) {
-    console.log("⏳ No audio tracks yet — retrying in 5s...");
+    console.log("No audio tracks yet — retrying in 5s...");
     await delay(2500);
     recorderStarted = await startRecorder();
-    if (!recorderStarted) console.warn("⚠️  Still no tracks. Will capture when others speak.");
+    if (!recorderStarted) console.warn("Still no tracks. Will capture when others speak.");
   }
 
-  console.log(`🔴 RECORDING → ${filePath}`);
+  console.log(`RECORDING → ${filePath}`);
   console.log("Press [Ctrl+C] to stop manually.\n");
 
   // INTEGRATION CHANGE: Notify Express that we are officially recording
@@ -287,8 +287,8 @@ async function startAudioBot(meetUrl) {
   }
 
   setTimeout(() => {
-    if (!hasData) console.warn("⚠️  No audio after 20s. Is anyone else in the call?");
-    else console.log(`📊 ${(bytesWritten / 1024).toFixed(1)} KB recorded so far.`);
+    if (!hasData) console.warn("No audio after 20s. Is anyone else in the call?");
+    else console.log(`${(bytesWritten / 1024).toFixed(1)} KB recorded so far.`);
   }, 20000);
 
   // ==========================================
@@ -299,7 +299,7 @@ async function startAudioBot(meetUrl) {
   const shutdown = async (reason) => {
     if (isShuttingDown) return;
     isShuttingDown = true;
-    console.log(`\n🛑 Shutting down — ${reason}`);
+    console.log(`\n Shutting down — ${reason}`);
 
     try {
       // Only try to manipulate the page if the browser is actually still alive!
@@ -317,14 +317,14 @@ async function startAudioBot(meetUrl) {
           await delay(800);
 
           try {
-            console.log("📴 Leaving the call by navigating away...");
+            console.log("Leaving the call by navigating away...");
             await page.goto("about:blank", { waitUntil: "domcontentloaded", timeout: 5000 });
-            console.log("✅ Left the call — WebRTC connections dropped.");
+            console.log("Left the call — WebRTC connections dropped.");
           } catch (e) {
-            console.log("ℹ️  Navigate away skipped.");
+            console.log(" Navigate away skipped.");
           }
       } else {
-          console.log("📴 Browser already closed, skipping UI shutdown steps...");
+          console.log("Browser already closed, skipping UI shutdown steps...");
       }
 
       // CRITICAL: We MUST close the file stream regardless of how it shut down
@@ -332,7 +332,7 @@ async function startAudioBot(meetUrl) {
         fileStream.end((err) => (err ? reject(err) : resolve()))
       );
 
-      console.log(`✅ Saved: ${filePath} (${(bytesWritten / 1024).toFixed(1)} KB)`);
+      console.log(`Saved: ${filePath} (${(bytesWritten / 1024).toFixed(1)} KB)`);
       
       if (browser.isConnected()) {
           await browser.close().catch(() => {});
@@ -358,7 +358,7 @@ async function startAudioBot(meetUrl) {
 
   process.on("SIGINT", async () => {
     process.on("SIGINT", () => {
-      console.log("\n⚠️  Force quitting...");
+      console.log("\n Force quitting...");
       process.exit(1);
     });
     await shutdown("Ctrl+C");
@@ -371,7 +371,7 @@ async function startAudioBot(meetUrl) {
   // ==========================================
   // MANUAL LEAVE / HANG UP DETECTOR
   // ==========================================
-  console.log("🛡️ Monitoring for manual hang-ups or meeting end...");
+  console.log("Monitoring for manual hang-ups or meeting end...");
   const hangupMonitor = setInterval(async () => {
     if (isShuttingDown) {
         clearInterval(hangupMonitor);
@@ -408,7 +408,7 @@ async function startAudioBot(meetUrl) {
   // ==========================================
   // SPEEDY AUTO-LEAVE MONITOR
   // ==========================================
-  console.log("👀 Monitoring participant count...");
+  console.log("Monitoring participant count...");
   let aloneCount = 0;
   const maxAlone = Math.ceil(ALONE_THRESHOLD_SECONDS / (CHECK_INTERVAL_MS / 1000));
 
@@ -418,16 +418,16 @@ async function startAudioBot(meetUrl) {
       const count = await getParticipantCount(page);
       
       if (count !== -1) {
-        console.log(`👥 Participants: ${count}`);
+        console.log(`Participants: ${count}`);
       }
 
       if (count <= 1 && count !== -1) {
         aloneCount++;
         const secsLeft = (maxAlone - aloneCount) * (CHECK_INTERVAL_MS / 1000);
-        console.log(`👻 Alone ${aloneCount}/${maxAlone} — leaving in ~${secsLeft}s`);
+        console.log(`Alone ${aloneCount}/${maxAlone} — leaving in ~${secsLeft}s`);
         if (aloneCount >= maxAlone) { clearInterval(monitor); shutdown("Empty room"); }
       } else {
-        if (aloneCount > 0) console.log("👥 Others present — resetting timer.");
+        if (aloneCount > 0) console.log("Others present — resetting timer.");
         aloneCount = 0;
       }
     } catch { }
@@ -500,15 +500,15 @@ async function muteControls(page) {
       if (btn) {
         await btn.click();
         await delay(400);
-        console.log(`📷 Camera turned off via UI.`);
+        console.log(`Camera turned off via UI.`);
         camActivelyMuted = true;
         break;
       }
     } catch { }
   }
 
-  if (!micActivelyMuted) console.log("🔇 Mic appears to already be off.");
-  if (!camActivelyMuted) console.log("📷 Camera appears to already be off.");
+  if (!micActivelyMuted) console.log(" Mic appears to already be off.");
+  if (!camActivelyMuted) console.log("Camera appears to already be off.");
 }
 
 async function dismissGotItPopup(page) {
@@ -533,7 +533,7 @@ async function dismissGotItPopup(page) {
         } else {
           await page.evaluate((el) => el.click(), btn);
         }
-        console.log("✅ Dismissed 'Got it' popup.");
+        console.log("Dismissed 'Got it' popup.");
         await delay(500); 
         return;
       }
